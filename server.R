@@ -11,8 +11,15 @@ library(shiny)
 
 prepped_dat <- read.csv("prepped_tox_conv.csv")
 assessed_dat <- read.csv("assessed_tox_conv.csv")
-unicats = unique(assessed_dat[,c("IR_MLID", "R317Descrp","BEN_CLASS","IR_Lat","IR_Long","IR_Cat")])
-unicats1 = plyr::ddply(unicats, .(IR_MLID, R317Descrp, BEN_CLASS, IR_Lat, IR_Long),summarize, Categories = paste(IR_Cat, collapse = ", "))
+assessed_dat = within(assessed_dat,{
+  Num_Cat[IR_Cat == "FS"] <- 1
+  Num_Cat[IR_Cat == "idE"] <- 2
+  Num_Cat[IR_Cat == "idNE"] <- 3
+  Num_Cat[IR_Cat == "TMDL"] <- 4
+  Num_Cat[IR_Cat == "NS"] <- 5
+})
+unicats = unique(assessed_dat[,c("IR_MLID", "R317Descrp","BEN_CLASS","IR_Lat","IR_Long","IR_Cat", "Num_Cat")])
+unicats1 = plyr::ddply(unicats, .(IR_MLID, R317Descrp, BEN_CLASS, IR_Lat, IR_Long),summarize, Categories = paste(IR_Cat, collapse = ", "), MaxCat = max(Num_Cat))
 
 # Define server logic required to draw a histogram
 shinyServer(function(input, output) {
