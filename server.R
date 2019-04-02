@@ -183,8 +183,8 @@ observe({
     updatedata <- isolate(reactive_objects$filtered_data)
     print(min(updatedata$ActivityStartDate))
     reactive_objects$filtered_data = updatedata[updatedata$BeneficialUse%in%reactive_objects$uses,]
-    reactive_objects$maxdate = max(updatedata$filtered_data$ActivityStartDate)
-    reactive_objects$mindate = min(updatedata$filtered_data$ActivityStartDate)}
+    reactive_objects$maxdate = max(updatedata$ActivityStartDate)
+    reactive_objects$mindate = min(updatedata$ActivityStartDate)}
 })
 
 output$sel_params <- renderUI({
@@ -196,7 +196,6 @@ output$sel_use <- renderUI({
 })
 
 output$sel_date <- renderUI({
-  req(reactive_objects$maxdate)
   sliderInput("sel_date", "Select Date Range", value = c(reactive_objects$mindate,reactive_objects$maxdate), min = reactive_objects$mindate, max = reactive_objects$maxdate)
 })
 
