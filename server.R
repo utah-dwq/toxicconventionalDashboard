@@ -33,6 +33,10 @@ siteinfo$radius = log(siteinfo$NCount)*3
 # Site coordinates
 site_coords=sf::st_as_sf(siteinfo, coords=c("IR_Long","IR_Lat"), crs=4326, remove=F)
 
+# Data table and plotting cast
+vizdat <- unique(prepped_dat[,c("BeneficialUse","BEN_CLASS","IR_MLID", "R3172ParameterName","ActivityStartDate","IR_Unit","AssessmentType","CriterionType","NumericCriterion","CriterionLabel","IR_Value")])
+
+vizdat1 <- tidyr::spread(vizdat, BeneficialUse, NumericCriterion, fill= NA)
 
 ################ SERVER ##################
 
