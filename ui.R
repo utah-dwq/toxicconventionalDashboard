@@ -33,12 +33,12 @@ shinyUI(fluidPage(
     fluidRow(
       useShinyjs(),
       br(),
-      h4("Expand and collapse Select Data, Filter Data, and View Data panes by clicking the pane title."),
+      h4("Expand and collapse Select Sites, Filter Data, and View Data panes by clicking the pane title."),
       bsCollapse(id = "collpanels", multiple = TRUE,
-                bsCollapsePanel("Select Data",
+                bsCollapsePanel("Select Sites",
                                 bsCollapse(id = "seldatpanels", multiple=TRUE,
                                 bsCollapsePanel("Map",
-                                                strong("Click site markers to view summary data. Click 'Select Site' button to add site to list below to view data."),
+                                                strong("Click site markers to view summary data. Click 'Select Site' button to add site to selected site list below."),
                                          # fluidRow(column(6,actionButton("reset_zoom", label = "Reset map zoom",style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
                                          # br(),      
                                          fluidRow(shinycssloaders::withSpinner(leaflet::leafletOutput("map", height="600px"),size=2, color="#0080b7"))),
@@ -47,7 +47,7 @@ shinyUI(fluidPage(
                                                          div(DT::DTOutput("site_list"), style = "font-size:70%"))
                                 ),
                                 bsCollapsePanel("Selected Site(s)",
-                                                fluidRow(strong("Selected site(s) from map and table will appear here.")),
+                                                fluidRow(strong("Selected site(s) from map and table will appear here. Click 'Clear Site List' to clear selected sites.")),
                                                 br(),
                                                 fluidRow(actionButton("clear_sitelist","Clear Site List",style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
                                                 br(),
@@ -62,8 +62,26 @@ shinyUI(fluidPage(
                                          column(4, uiOutput("sel_use")),
                                          column(4,uiOutput("sel_date"))),
                                 br(),
-                                fluidRow(div(DT::DTOutput("filtered_data"), style = "font-size:70%"))
+                                fluidRow(column(4, actionButton("filter_data", "Filter Data", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')))
                                 ),
-                bsCollapsePanel("View Data"))
+                bsCollapsePanel("View Data",
+                                # tabsetPanel(
+                                #   tabPanel("Data"),
+                                #   tabPanel("Plots")
+                                # )
+                                bsCollapse(id = "viewdat_panels",multiple = TRUE, open = "Data",
+                                           bsCollapsePanel("Data",
+                                                           strong("Review the prepped data below. Select any questionable records and click 'Make Comment' to flag data records for review."),
+                                                           fluidRow(actionButton("dt_comment", "Make Comment", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
+                                                           fluidRow(div(DT::DTOutput("filtered_data"), style = "font-size:70%"))
+                                           ),
+                                           bsCollapsePanel("Plots",
+                                                           tabsetPanel(
+                                                             tabPanel("Time Series",
+                                                                      plotlyOutput("time_series")),
+                                                             tabPanel("Scatterplot"),
+                                                             tabPanel("Concentration Map")
+                                                           )))
+                                ))
   )
   ))
