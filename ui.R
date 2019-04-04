@@ -9,6 +9,8 @@ require(sf)
 require(plyr)
 require(DT)
 require(shinyBS)
+library(shinyjs)
+library(plotly)
 
 # Define UI for application that draws a histogram
 shinyUI(fluidPage(
@@ -33,17 +35,19 @@ shinyUI(fluidPage(
     fluidRow(
       useShinyjs(),
       br(),
-      h4("Expand and collapse Select Sites, Filter Data, and View Data panes by clicking the pane title."),
+      h4("Expand and collapse panels by clicking the panel title."),
       bsCollapse(id = "collpanels", multiple = TRUE,
                 bsCollapsePanel("Select Sites",
+                                h4("Use the Map and Data panels to add sites to the Selected Site(s) panel."),
+                                br(),
                                 bsCollapse(id = "seldatpanels", multiple=TRUE,
                                 bsCollapsePanel("Map",
-                                                strong("Click site markers to view summary data. Click 'Select Site' button to add site to selected site list below."),
+                                                strong("Click site markers to view summary data. Click 'Select Site' button to add site to selected site list below. Point colors and sizes are based on site category and overall sample N count, respectively."),
                                          # fluidRow(column(6,actionButton("reset_zoom", label = "Reset map zoom",style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
                                          # br(),      
                                          fluidRow(shinycssloaders::withSpinner(leaflet::leafletOutput("map", height="600px"),size=2, color="#0080b7"))),
                                 bsCollapsePanel("Data",
-                                                fluidRow(strong("Select site(s) to analyze in tables and plots below."),
+                                                fluidRow(strong("Click site records to add to selected sites list."),
                                                          div(DT::DTOutput("site_list"), style = "font-size:70%"))
                                 ),
                                 bsCollapsePanel("Selected Site(s)",
@@ -54,34 +58,48 @@ shinyUI(fluidPage(
                                                 fluidRow(div(DT::DTOutput("selsite_list"), style = "font-size:70%"))
                                                 )
                                 )),
-                bsCollapsePanel("Filter Data",
-                                h4("Further drill down data specifics in this tab before exploring plots, below"),
-                                br(),
-                                br(),
-                                fluidRow(column(4,uiOutput("sel_params")),
-                                         column(4, uiOutput("sel_use")),
-                                         column(4,uiOutput("sel_date"))),
-                                br(),
-                                fluidRow(column(4, actionButton("filter_data", "Filter Data", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')))
-                                ),
                 bsCollapsePanel("View Data",
-                                # tabsetPanel(
-                                #   tabPanel("Data"),
-                                #   tabPanel("Plots")
-                                # )
+                                br(),
+                                fluidRow(column(2,actionButton("build_dat", "Build Data Table", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
+                                         column(2,actionButton("clear_dat", "Clear Data Table", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
+                                br(),
                                 bsCollapse(id = "viewdat_panels",multiple = TRUE, open = "Data",
                                            bsCollapsePanel("Data",
                                                            strong("Review the prepped data below. Select any questionable records and click 'Make Comment' to flag data records for review."),
                                                            fluidRow(actionButton("dt_comment", "Make Comment", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
-                                                           fluidRow(div(DT::DTOutput("filtered_data"), style = "font-size:70%"))
+                                                           fluidRow(div(DT::DTOutput("selsite_data"), style = "font-size:70%"))
                                            ),
                                            bsCollapsePanel("Plots",
                                                            tabsetPanel(
-                                                             tabPanel("Time Series",
-                                                                      plotlyOutput("time_series")),
+                                                             tabPanel("Compare Parameters",
+                                                                        fluidRow(column(3,uiOutput("sel_param_site"))),
+                                                                        fluidRow(column(3,uiOutput("sel_param1")),
+                                                                                 column(3,uiOutput("sel_param2")),
+                                                                                 column(3,uiOutput("sel_param3"))),
+                                                                        fluidRow(column(3,uiOutput("sel_use1")),
+                                                                                 column(3,uiOutput("sel_use2")),
+                                                                                 column(3, actionButton("draw_plot1", "Draw Plot", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
+                                                                         fluidRow(plotlyOutput("compare_params"))),
+                                                             tabPanel("Compare Sites",
+                                                                      fluidRow(column(3,uiOutput("sel_comparam")),
+                                                                               column(3,uiOutput("sel_comparuse1")),
+                                                                               column(3,uiOutput("sel_comparuse2"))),
+                                                                      fluidRow(plotlyOutput("compare_sites"))),
                                                              tabPanel("Scatterplot"),
                                                              tabPanel("Concentration Map")
                                                            )))
                                 ))
   )
   ))
+
+
+# bsCollapsePanel("Filter Data",
+#                 h4("Further drill down data specifics in this tab before exploring plots, below"),
+#                 br(),
+#                 br(),
+#                 fluidRow(column(4,uiOutput("sel_params")),
+#                          column(4, uiOutput("sel_use")),
+#                          column(4,uiOutput("sel_date"))),
+#                 br(),
+#                 fluidRow(column(4, actionButton("filter_data", "Filter Data", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')))
+#                 ),

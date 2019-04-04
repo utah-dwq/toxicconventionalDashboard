@@ -9,9 +9,11 @@
 
 library(shiny)
 library(plyr)
+library(shinyjs)
+library(plotly)
 
 ### Load prepped data ###
-prepped_dat <- read.csv("prepped_tox_conv.csv")
+prepped_dat <- read.csv("prepped_tox_conv.csv", stringsAsFactors = FALSE)
 prepped_dat$ActivityStartDate = as.Date(as.character(prepped_dat$ActivityStartDate),"%m/%d/%Y")
 
 # Separate numeric criteria from data
@@ -180,56 +182,199 @@ observe({
 # Clear table filter buttons
 observeEvent(input$clear_sitelist, ignoreInit=T,{
   reactive_objects$sel_sites = NULL
-  reactive_objects$crit = NULL
-  reactive_objects$params = NULL
-  reactive_objects$uses = NULL
-  reactive_objects$data = NULL
-  reactive_objects$mindate = min(site_params$ActivityStartDate)
-  reactive_objects$maxdate = max(site_params$ActivityStartDate)
-  sitelist_proxy%>%selectRows(selected = NULL)%>%clearSearch()
-  output$filtered_data <- DT::renderDT({
+  reactive_objects$selsite_data = NULL
+  selsite_data = site_params[0,]
+  output$selsite_data <- DT::renderDT({
     DT::datatable(
-      empty_filters, rownames=FALSE,
-      options = list(scrollY = '400px', scrollX = TRUE, paging = FALSE, dom="t")
+      selsite_data, rownames=FALSE,filter="top",
+      options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
     )
+  })
+  outputOptions(output, "selsite_data", suspendWhenHidden = FALSE)
+  sitelist_proxy%>%selectRows(selected = NULL)%>%clearSearch()
+})
+
+#### FILTERING BY SITES ####
+
+# Load data
+observeEvent(input$build_dat,{
+  selsite_data <- site_params[site_params$IR_MLID%in%reactive_objects$sel_sites,]
+  reactive_objects$selsite_data = selsite_data
+    output$selsite_data <- DT::renderDT({
+      DT::datatable(
+        selsite_data, rownames=FALSE,filter="top",
+        options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
+      )
+    })
+    outputOptions(output, "selsite_data", suspendWhenHidden = FALSE)
+})
+
+# Clear data
+observeEvent(input$clear_dat,{
+  reactive_objects$selsite_data = NULL
+  selsite_data = site_params[0,]
+  output$selsite_data <- DT::renderDT({
+    DT::datatable(
+      selsite_data, rownames=FALSE,filter="top",
+      options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
+    )
+  })
+  outputOptions(output, "selsite_data", suspendWhenHidden = FALSE)
+})
+
+#### COMPARE PARAMS ####
+
+# Site selection
+observe({
+  if(!is.null(reactive_objects$selsite_data)){
+    reactive_objects$sel.param.sites = unique(reactive_objects$selsite_data$IR_MLID)
+    }
+  output$sel_param_site <- renderUI({
+    selectInput("sel_param_site","Select Site", choices = c("",reactive_objects$sel.param.sites), selected = "")
   })
 })
 
-##### FILTER DATA ####
-
-# Filtering dependencies 
+# Parameter 1 selection based on site
 observe({
-  if(!is.null(reactive_objects$sel_sites)){
-    reactive_objects$crit = num_crit[num_crit$IR_MLID%in%reactive_objects$sel_sites,]
-    reactive_objects$params = unique(reactive_objects$crit$R3172ParameterName)
-  }else{
-    reactive_objects$crit = NULL
-    reactive_objects$params = NULL
-    reactive_objects$uses = NULL
+  if(!is.null(input$sel_param_site)){
+    data = isolate(reactive_objects$selsite_data)
+    reactive_objects$sel.param1 = unique(data$R3172ParameterName[data$IR_MLID==input$sel_param_site])
   }
-  if(!is.null(input$sel_params)){
-    updatecrit <- isolate(reactive_objects$crit)
-    reactive_objects$crit = updatecrit[updatecrit$R3172ParameterName%in%reactive_objects$params,]
-    reactive_objects$uses = unique(reactive_objects$crit$BeneficialUse)}
-  if(!is.null(input$sel_use)){
-    updatecrit <- isolate(reactive_objects$crit)
-    reactive_objects$crit = updatecrit[updatecrit$BeneficialUse%in%reactive_objects$uses,]
+  output$sel_param1 <- renderUI({
+    selectInput("sel_param1", "Select Parameter 1", choices = c("",reactive_objects$sel.param1), selected = "")
+  })
+})
+
+# Parameter 2 selection based on parameter 1
+observe({
+  if(!is.null(input$sel_param1)){
+    params = isolate(reactive_objects$sel.param1)
+    params1 = params[!(params==input$sel_param1)]
+    if(length(params1)>0){
+      reactive_objects$sel.param2 = params1
+    }else{
+        reactive_objects$sel.param2=NULL}
     }
+  output$sel_param2 <- renderUI({
+    selectInput("sel_param2", "Select Parameter 2", choices = c("",reactive_objects$sel.param2), selected = "")
+  })
+  
 })
 
-# Reactive user interface items
-output$sel_params <- renderUI({
-  selectizeInput("sel_params","Select R3172 Parameter(s)",choices = reactive_objects$params, multiple = TRUE, selected = NULL)
+# Parameter 3 selection based on parameter 2
+observe({
+  if(!is.null(input$sel_param2)){
+    params = isolate(reactive_objects$sel.param2)
+    params1 = params[!(params==input$sel_param2)]
+    if(length(params1)>0){
+      reactive_objects$sel.param3 = params1
+    }else{
+      reactive_objects$sel.param3=NULL}
+  }
+  output$sel_param3 <- renderUI({
+    selectInput("sel_param3", "Select Parameter 3", choices = c("",reactive_objects$sel.param3), selected = "")
+  })
+  
 })
 
-output$sel_use <- renderUI({
-  selectizeInput("sel_use", "Select Uses", choices = reactive_objects$uses, multiple = TRUE, selected = NULL)
+# Isolate numeric criteria for selected sites; Use 1 selection based on parameters
+observe({
+  param_inputs = c(input$sel_param1, input$sel_param2, input$sel_param3)
+  reactive_objects$param.inputs = param_inputs
+  print(reactive_objects$param.inputs)
+  if(length(param_inputs)>0){
+    site_param_crit = num_crit[num_crit$IR_MLID%in%reactive_objects$sel_sites&num_crit$R3172ParameterName%in%param_inputs,]
+    reactive_objects$site_param_crit = site_param_crit
+    reactive_objects$sel.use1 = unique(site_param_crit$BeneficialUse)
+  }
+  output$sel_use1 <- renderUI({
+    selectInput("sel_use1", "Select Use 1", choices = c("",reactive_objects$sel.use1), selected = "")
+  })
 })
 
-output$sel_date <- renderUI({
-  req(reactive_objects$mindate)
-  sliderInput("sel_date", "Select Date Range", value = c(reactive_objects$mindate,reactive_objects$maxdate), min = reactive_objects$mindate, max = reactive_objects$maxdate)
+# Select use 2 based on use 1 input
+observe({
+  if(!is.null(input$sel_use1)){
+    uses = isolate(reactive_objects$sel.use1)
+    uses1 = uses[!(uses==input$sel_use1)]
+    if(length(uses1)>0){
+      reactive_objects$sel.use2 = uses1
+    }else{reactive_objects$sel.use2 = NULL}
+  }
+  output$sel_use2 <- renderUI({
+    selectInput("sel_use2", "Select Use 2", choices = c("",reactive_objects$sel.use2), selected = "")
+  })
 })
+
+# Filter data to inputs for plotting
+observe({
+  if(!is.null(input$sel_param1)&!is.null(input$sel_use1)){
+    data = isolate(reactive_objects$selsite_data)
+    crit = isolate(reactive_objects$site_param_crit)
+    reactive_objects$plotdata = data[data$IR_MLID==input$sel_param_site&data$R3172ParameterName%in%c(input$sel_param1, input$sel_param2, input$sel_param3),]
+    reactive_objects$plotcrit = crit[crit$BeneficialUse%in%c(input$sel_use1, input$sel_use2)]
+  }
+})
+
+## PLOT ##
+
+# Time series - plot all parameters over time with standards plotted
+observeEvent(input$draw_plot1, {
+  output$compare_params <- renderPlotly({
+    plotdata = isolate(reactive_objects$plotdata)
+    plotcrit = isolate(reactive_objects$plotcrit)
+    
+    param1 = plotdata[plotdata$R3172ParameterName==reactive_objects$param.inputs[1],]
+    param2 = plotdata[plotdata$R3172ParameterName==reactive_objects$param.inputs[2],]
+    param3 = plotdata[plotdata$R3172ParameterName==reactive_objects$param.inputs[3],]
+    print(param2)
+    
+    yax1 <- list(
+      tickfont = list(color = "red"),
+      overlaying = "y",
+      side = "left",
+      title = param1$IR_Unit[1]
+    )
+    
+    yax2 <- list(
+      tickfont = list(color = "red"),
+      overlaying = "y",
+      side = "right",
+      title = param2$IR_Unit[1]
+    )
+    
+    p = plot_ly() %>% 
+      add_trace(x = param1$ActivityStartDate, y = param1$IR_Value, name = param1$R3172ParameterName[1], mode='lines+markers', yaxis="y1") %>%
+      add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], mode='lines+markers', yaxis="y2")%>%
+      layout(title = plotdata$IR_MLID[1],
+             yaxis = yax1,
+             yaxis2 = yax2,
+             xaxis = list(title = "Date"))
+    
+  })
+
+})
+
+
+
+#### PLOTTING ####
+
+
+
+# Conc v. flow scatterplot - plot chosen parameter versus flow (if available)
+
+# Spatial concentration relationships - Map site points with radius proportional to concentration
+
+
+
+
+
+
+})
+
+
+
+
 
 # Define date range for slider input - changes based on whether a partially filtered data object is present in the reactivity object
 # observe({
@@ -247,54 +392,70 @@ output$sel_date <- renderUI({
 #   }
 # })
 
-# Filter data based on crit filters
-observe({
-  if(!is.null(input$sel_use)){
-    dates = site_params$ActivityStartDate[site_params$IR_MLID%in%reactive_objects$sel_sites&site_params$R3172ParameterName%in%input$sel_params]
-    reactive_objects$mindate = min(dates)
-    reactive_objects$maxdate = max(dates)
-  }else{
-    reactive_objects$mindate = min(site_params$ActivityStartDate)
-    reactive_objects$maxdate = max(site_params$ActivityStartDate)
-    }
-})
+# ##### FILTER DATA ####
+# 
+# # Filtering dependencies 
+# observe({
+#   if(!is.null(reactive_objects$sel_sites)){
+#     reactive_objects$crit = num_crit[num_crit$IR_MLID%in%reactive_objects$sel_sites,]
+#     reactive_objects$params = unique(reactive_objects$crit$R3172ParameterName)
+#   }else{
+#     reactive_objects$crit = NULL
+#     reactive_objects$params = NULL
+#     reactive_objects$uses = NULL
+#   }
+#   if(!is.null(input$sel_params)){
+#     updatecrit <- isolate(reactive_objects$crit)
+#     reactive_objects$crit = updatecrit[updatecrit$R3172ParameterName%in%reactive_objects$params,]
+#     reactive_objects$uses = unique(reactive_objects$crit$BeneficialUse)}
+#   if(!is.null(input$sel_use)){
+#     updatecrit <- isolate(reactive_objects$crit)
+#     reactive_objects$crit = updatecrit[updatecrit$BeneficialUse%in%reactive_objects$uses,]
+#     }
+# })
+# 
+# # Reactive user interface items
+# output$sel_params <- renderUI({
+#   selectizeInput("sel_params","Select R3172 Parameter(s)",choices = reactive_objects$params, multiple = TRUE, selected = NULL)
+# })
+# 
+# output$sel_use <- renderUI({
+#   selectizeInput("sel_use", "Select Uses", choices = reactive_objects$uses, multiple = TRUE, selected = NULL)
+# })
+# 
+# output$sel_date <- renderUI({
+#   req(reactive_objects$mindate)
+#   sliderInput("sel_date", "Select Date Range", value = c(reactive_objects$mindate,reactive_objects$maxdate), min = reactive_objects$mindate, max = reactive_objects$maxdate)
+# })
+# 
+# # Filter data based on crit filters
+# observe({
+#   if(!is.null(input$sel_use)){
+#     dates = site_params$ActivityStartDate[site_params$IR_MLID%in%reactive_objects$sel_sites&site_params$R3172ParameterName%in%input$sel_params]
+#     reactive_objects$mindate = min(dates)
+#     reactive_objects$maxdate = max(dates)
+#   }else{
+#     reactive_objects$mindate = min(site_params$ActivityStartDate)
+#     reactive_objects$maxdate = max(site_params$ActivityStartDate)
+#     }
+# })
+# 
+# # Finally, filter data one last time based on date input.
+# # Define empty table for clear site list button
+# empty_filters = site_params[0,]
+# 
+# # On filter data click, create data table
+# observeEvent(input$filter_data,{
+#   filteredat = site_params[site_params$IR_MLID%in%reactive_objects$sel_sites&site_params$R3172ParameterName%in%input$sel_params,]
+#   filteredat = filteredat[filteredat$ActivityStartDate>=input$sel_date[1]&filteredat$ActivityStartDate<=input$sel_date[2],]
+#   reactive_objects$data = filteredat
+#   
+#   output$filtered_data <- DT::renderDT({
+#     DT::datatable(
+#       filteredat, rownames=FALSE,filter="top",
+#       options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
+#     )
+#   })
+#   outputOptions(output, "filtered_data", suspendWhenHidden = FALSE)
+#   })
 
-# Finally, filter data one last time based on date input.
-# Define empty table for clear site list button
-empty_filters = site_params[0,]
-
-# On filter data click, create data table
-observeEvent(input$filter_data,{
-  filteredat = site_params[site_params$IR_MLID%in%reactive_objects$sel_sites&site_params$R3172ParameterName%in%input$sel_params,]
-  filteredat = filteredat[filteredat$ActivityStartDate>=input$sel_date[1]&filteredat$ActivityStartDate<=input$sel_date[2],]
-  reactive_objects$data = filteredat
-  
-  output$filtered_data <- DT::renderDT({
-    DT::datatable(
-      filteredat, rownames=FALSE,filter="top",
-      options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
-    )
-  })
-  outputOptions(output, "filtered_data", suspendWhenHidden = FALSE)
-  })
-
-### PLOTTING ###
-
-# Time series - plot all parameters over time with standards plotted
-output$time_series <- renderPlotly({
-  filtdat = isolate(reactive_objects$data)
-  p = plot_ly(type='scatter', x = filtdat$ActivityStartDate, y = filtdat$IR_Value,mode = 'lines+markers',
-              transforms = list(
-                list(
-                  type = 'groupby',
-                  groups = c(filtdat$R3172ParameterName, filtdat$IR_MLID)
-                )
-              ))
-})
-
-# Conc v. flow scatterplot - plot chosen parameter versus flow (if available)
-
-# Spatial concentration relationships - Map site points with radius proportional to concentration
-
-
-})
