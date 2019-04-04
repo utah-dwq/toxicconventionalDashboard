@@ -252,9 +252,12 @@ observe({
 
 # Isolate numeric criteria for selected sites; Use 1 selection based on site
 observe({
-  site_num_crit = num_crit[num_crit$IR_MLID==input$sel_param_site]
-  reactive_objects$site_num_crit = site_num_crit
-  reactive_objects$sel.use1 = unique(site_num_crit$BeneficialUses)
+  if(!is.null(input$sel_param_site)){
+    site_num_crit = num_crit[num_crit$IR_MLID==input$sel_param_site,]
+    reactive_objects$site_num_crit = site_num_crit
+    reactive_objects$sel.use1 = unique(site_num_crit$BeneficialUse)
+    print(input$sel_param_site)
+  }
   output$sel_use1 <- renderUI({
     selectInput("sel_use1", "Select Use 1", choices = c("",reactive_objects$sel.use1), selected = "")
   })
