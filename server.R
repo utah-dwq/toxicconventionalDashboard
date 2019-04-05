@@ -104,19 +104,7 @@ map_proxy = leaflet::leafletProxy("map")
 # map
 session$onFlushed(once = T, function() {
   output$map <- leaflet::renderLeaflet({
-    map = wqTools::buildMap(plot_polys=FALSE, search="")
-    map = addPolygons(map, data=wqTools::au_poly,group="Assessment units",smoothFactor=3,opacity=0.9, fillOpacity = 0.1, weight = 2, color = "purple", options = pathOptions(pane = "underlay_polygons"),
-                      popup=paste0(
-                        "AU name: ", au_poly$AU_NAME,
-                        "<br> AU ID: ", au_poly$ASSESS_ID,
-                        "<br> AU type: ", au_poly$AU_Type,
-                        "<br> Category: ", au_poly$au_colors))
-    map = addPolygons(map, data=wqTools::bu_poly,group="Beneficial uses",smoothFactor=3,opacity=0.9,fillOpacity = 0.1,weight=2,color="green", options = pathOptions(pane = "underlay_polygons"),
-                      popup=paste0(
-                        "Description: ", bu_poly$R317Descrp,
-                        "<br> Uses: ", bu_poly$bu_class))
-    map = addPolygons(map, data=wqTools::ss_poly,group="Site-specific standards",smoothFactor=3,opacity=0.9,fillOpacity = 0.1,weight=2,color="blue", options = pathOptions(pane = "underlay_polygons"),
-                      popup=paste0("SS std: ", ss_poly$SiteSpecif))
+    map = wqTools::buildMap(plot_polys=TRUE, search="")
     map = leaflet::addLayersControl(map,
                                     position ="topleft",
                                     baseGroups = c("Topo","Satellite"),overlayGroups = c("Sites", "Assessment units","Beneficial uses", "Site-specific standards"),
@@ -353,7 +341,6 @@ observe({
     uniq_units = unique(plotcrit[,c("R3172ParameterName","CriterionUnits")])
     uniq_units$label = "keep"
     names(uniq_units)[names(uniq_units)=="CriterionUnits"] = "IR_Unit"
-    print(uniq_units)
     plotdata_units = merge(plotdata, uniq_units, all.x=TRUE)
     plotdata_units = plotdata_units[!is.na(plotdata_units$label),!names(plotdata_units)%in%c("label")]
     
@@ -361,13 +348,13 @@ observe({
     param2 = plotdata[plotdata$R3172ParameterName==input$sel_param2,]
     #param3 = plotdata[plotdata$R3172ParameterName==input$sel_param3,]
     
-    p = plot_ly(type = 'scatter')%>% 
+    p = plot_ly(type = 'scatter', mode = 'lines+markers')%>% 
       layout(title = param1$IR_MLID[1],
              yaxis1 = list(title = param1$IR_Unit[1]),
              yaxis2 = list(side="right", overlaying = "y",title = param2$IR_Unit[1]))%>%
             # yaxis3 = list(side = "right", overlaying = "y", title = param3$IR_Unit[1]))%>%
-      add_trace(x = param1$ActivityStartDate, y = param1$IR_Value, name = param1$R3172ParameterName[1], mode='lines+markers')%>%
-      add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], mode='lines+markers', yaxis = "y2")
+      add_trace(x = param1$ActivityStartDate, y = param1$IR_Value, name = param1$R3172ParameterName[1], marker = list(size = 10))%>%
+      add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], marker = list(size = 10), yaxis = "y2")
      #%>% add_trace(x = param3$ActivityStartDate, y = param3$IR_Value, name = param3$R3172ParameterName[1], mode='lines+markers', yaxis = "y3")
   })
 
@@ -428,34 +415,93 @@ observe({
 ## PLOT ##
 
 output$compare_sites <- renderPlotly({
-  req(input$sel_comparam_site2)
+  req(input$sel_comparameter)
   
   plotdata = reactive_objects$selsite_data_nodups
   plotdata = plotdata[order(plotdata$ActivityStartDate),]
-  plotdata = plotdata[plotdata$R3172ParameterName==input$sel_comparameter&plotdata$IR_MLID%in%c(input$sel_comparam_site1,input$sel_comparam_site2,input$sel_comparam_site3),]
-  print(plotdata)
+  plotdata = plotdata[plotdata$R3172ParameterName==input$sel_comparameter,]
+ 
+  if(is.na(plotdata$IR_Unit[1])){
+    unit = ""
+  }else{unit = plotdata$IR_Unit[1]}
+  title = as.character(plotdata$R3172ParameterName[1])
   
-  site1 = plotdata[plotdata$IR_MLID==input$sel_comparam_site1,]
-  site2 = plotdata[plotdata$IR_MLID==input$sel_comparam_site2,]
-  site3 = plotdata[plotdata$IR_MLID==input$sel_comparam_site3,]
+  if(input$compare_plottype=="Time Series"){
+    # p = plot_ly(type = 'scatter')%>% 
+    #   layout(title = site1$R3172ParameterName[1],
+    #          yaxis1 = list(title = site1$IR_Unit[1]))%>%
+    #   add_trace(x = site1$ActivityStartDate, y = site1$IR_Value, name = site1$IR_MLID[1], mode='lines+markers')%>%
+    #   add_trace(x = site2$ActivityStartDate, y = site2$IR_Value, name = site2$IR_MLID[1], mode='lines+markers')%>%
+    #   add_trace(x = site3$ActivityStartDate, y = site3$IR_Value, name = site3$IR_MLID[1], mode='lines+markers')
+    p = plot_ly(type = 'scatter', mode = 'lines+markers',x = plotdata$ActivityStartDate, y = plotdata$IR_Value, color = plotdata$IR_MLID, transforms = list(type = 'groupby', groups = plotdata$IR_MLID),
+                marker = list(size=10))%>% 
+        layout(title = title,
+               xaxis = list(title = "Site"),
+               yaxis = list(title = unit))
+  }else{
+    # p = plot_ly(y= site1$IR_Value, name = site1$IR_MLID[1], type = "box")%>%
+    #   add_trace(y = site2$IR_Value, name = site2$IR_MLID[1])%>%
+    #   add_trace(y = site3$IR_Value, name = site3$IR_MLID[1])%>%
+    #   layout(yaxis = list(title = axis1_unit), xaxis = list(title = "Sites"))
+    p = plot_ly(type = 'box', y = plotdata$IR_Value, color = plotdata$IR_MLID, transforms = list(type = 'groupby', groups = plotdata$IR_MLID))%>%
+      layout(title = title,
+             xaxis = list(title = "Site"),
+             yaxis = list(title = unit))
+  }
   
-  p = plot_ly(type = 'scatter')%>% 
-    layout(title = site1$R3172ParameterName[1],
-           yaxis1 = list(title = site1$IR_Unit[1]))%>%
-    add_trace(x = site1$ActivityStartDate, y = site1$IR_Value, name = site1$IR_MLID[1], mode='lines+markers')%>%
-    add_trace(x = site2$ActivityStartDate, y = site2$IR_Value, name = site2$IR_MLID[1], mode='lines+markers')%>%
-    add_trace(x = site3$ActivityStartDate, y = site3$IR_Value, name = site3$IR_MLID[1], mode='lines+markers')
 })
 
+### SPATIAL RELATIONSHIPS PARAMS ###
+# Select parameter (same as other tab)
 
+output$sel_maparameter <- renderUI({
+    selectInput("sel_maparameter","Select Parameter", choices = c("",reactive_objects$comparameters), selected = "")
+  })
 
-
-
-# Conc v. flow scatterplot - plot chosen parameter versus flow (if available)
-
-# Spatial concentration relationships - Map site points with radius proportional to concentration
-
-
+# Map proxy
+conc_proxy = leaflet::leafletProxy("conc_map")
+# map
+session$onFlushed(once = T, function() {
+  output$conc_map <- leaflet::renderLeaflet({
+    
+    # Isolate data and map coordinates
+    data = reactive_objects$selsite_data_nodups
+    sites = data[,c("IR_MLID","IR_Lat","IR_Long")]
+    minlat = min(sites$IR_Lat)
+    maxlat = max(sites$IR_Lat)
+    minlong = min(sites$IR_Long)
+    maxlong = max(sites$IR_Long)
+    
+    conc_sites = data[data$R3172ParameterName==input$sel_maparameter,]
+    conc_radius = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, mean)
+    
+    conc_map = wqTools::buildMap(plot_polys=TRUE, search="")
+    conc_map = leaflet::addLayersControl(conc_map,
+                                    position ="topleft",
+                                    baseGroups = c("Topo","Satellite"),overlayGroups = c("Sites", "Assessment units","Beneficial uses", "Site-specific standards"),
+                                    options = leaflet::layersControlOptions(collapsed = TRUE, autoZIndex=TRUE))
+    conc_map = fitBounds(conc_map, minlong, minlat, maxlong, maxlat)
+    conc_map=addMapPane(conc_map,"site_markers", zIndex = 450)
+    conc_map = addCircleMarkers(conc_map, data = sites, lat=sites$IR_Lat, lng=sites$IR_Long, layerId = sites$IR_MLID,group="Sites",
+                           weight = 2, fill = TRUE, opacity=0.95, fillOpacity = 0.5, fillColor =~pal1(reactive_objects$selsite_data_nodups$MaxCat),radius = as.numeric(reactive_objects$site_coords$radius), color =~pal1(reactive_objects$site_coords$MaxCat), options = pathOptions(pane = "site_markers"),
+                           popup = paste0(
+                             "MLID: ", reactive_objects$site_coords$IR_MLID,
+                             "<br> ML Name: ", reactive_objects$site_coords$IR_MLNAME,
+                             "<br> Site Type: ", reactive_objects$site_coords$AU_Type,
+                             "<br> Categories: ", reactive_objects$site_coords$Categories,
+                             "<br> Impaired Params: ", reactive_objects$site_coords$Impaired_Params,
+                             "<br> Parameter Count: ", reactive_objects$site_coords$NParam,
+                             "<br> Sample Count: ", as.character(reactive_objects$site_coords$NCount)))
+    map=hideGroup(conc_map, "Assessment units")
+    map=hideGroup(conc_map, "Site-specific standards")
+    map=hideGroup(conc_map, "Beneficial uses") 
+    map=removeMeasure(conc_map)
+    map=leaflet::addLegend(conc_map, position = 'topright',
+                           colors = unique(pal1(reactive_objects$site_coords$MaxCat)), 
+                           labels = c("idE","FS","idNE","NS"))
+    #map=selectFeatures(reactive_objects$site_coords, mode = "click")
+  })
+})
 
 
 
