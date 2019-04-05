@@ -312,20 +312,20 @@ observe({
 })
 
 # Parameter 3 selection based on parameter 2
-observe({
-  if(!is.null(input$sel_param2)){
-    params = reactive_objects$sel.param2
-    params1 = params[!(params==input$sel_param2)]
-    if(length(params1)>0){
-      reactive_objects$sel.param3 = params1
-    }else{
-      reactive_objects$sel.param3=NULL}
-  }
-  output$sel_param3 <- renderUI({
-    selectInput("sel_param3", "Select Parameter 3", choices = c("",reactive_objects$sel.param3), selected = "")
-  })
-  
-})
+# observe({
+#   if(!is.null(input$sel_param2)){
+#     params = reactive_objects$sel.param2
+#     params1 = params[!(params==input$sel_param2)]
+#     if(length(params1)>0){
+#       reactive_objects$sel.param3 = params1
+#     }else{
+#       reactive_objects$sel.param3=NULL}
+#   }
+#   output$sel_param3 <- renderUI({
+#     selectInput("sel_param3", "Select Parameter 3", choices = c("",reactive_objects$sel.param3), selected = "")
+#   })
+#   
+# })
 
 # Filter data to inputs for plotting
 observe({
@@ -359,30 +359,16 @@ observe({
     
     param1 = plotdata[plotdata$R3172ParameterName==input$sel_param1,]
     param2 = plotdata[plotdata$R3172ParameterName==input$sel_param2,]
-    param3 = plotdata[plotdata$R3172ParameterName==input$sel_param3,]
-
-    yax1 <- list(
-      tickfont = list(color = "red"),
-      overlaying = "y",
-      side = "left",
-      title = param1$IR_Unit[1]
-    )
-    
-    yax2 <- list(
-      tickfont = list(color = "red"),
-      overlaying = "y",
-      side = "right",
-      title = param2$IR_Unit[1]
-    )
+    #param3 = plotdata[plotdata$R3172ParameterName==input$sel_param3,]
     
     p = plot_ly(type = 'scatter')%>% 
       layout(title = param1$IR_MLID[1],
              yaxis1 = list(title = param1$IR_Unit[1]),
-             yaxis2 = list(side="right", overlaying = "y",title = param2$IR_Unit[1]),
-             yaxis3 = list(side = "right", overlaying = "y", title = param3$IR_Unit[1]))%>%
+             yaxis2 = list(side="right", overlaying = "y",title = param2$IR_Unit[1]))%>%
+            # yaxis3 = list(side = "right", overlaying = "y", title = param3$IR_Unit[1]))%>%
       add_trace(x = param1$ActivityStartDate, y = param1$IR_Value, name = param1$R3172ParameterName[1], mode='lines+markers')%>%
-      add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], mode='lines+markers', yaxis = "y2")%>%
-      add_trace(x = param3$ActivityStartDate, y = param3$IR_Value, name = param3$R3172ParameterName[1], mode='lines+markers', yaxis = "y3")
+      add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], mode='lines+markers', yaxis = "y2")
+     #%>% add_trace(x = param3$ActivityStartDate, y = param3$IR_Value, name = param3$R3172ParameterName[1], mode='lines+markers', yaxis = "y3")
   })
 
 #### COMPARE SITES ####
@@ -571,3 +557,17 @@ output$compare_sites <- renderPlotly({
 #   reactive_objects$site_param_crit = site_param_crit
 #   reactive_objects$sel.use1 = unique(site_param_crit$BeneficialUse)
 # }
+
+# yax1 <- list(
+#   tickfont = list(color = "red"),
+#   overlaying = "y",
+#   side = "left",
+#   title = param1$IR_Unit[1]
+# )
+# 
+# yax2 <- list(
+#   tickfont = list(color = "red"),
+#   overlaying = "y",
+#   side = "right",
+#   title = param2$IR_Unit[1]
+# )
