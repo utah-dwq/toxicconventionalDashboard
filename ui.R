@@ -80,9 +80,10 @@ shinyUI(fluidPage(
                                                                                  column(3,uiOutput("sel_param3"))),
                                                                          fluidRow(plotlyOutput("compare_params"))),
                                                              tabPanel("Multi-Site Time Series",
-                                                                      fluidRow(column(3,uiOutput("sel_comparam")),
-                                                                               column(3,uiOutput("sel_comparuse1")),
-                                                                               column(3,uiOutput("sel_comparuse2"))),
+                                                                      fluidRow(column(3,uiOutput("sel_comparameter"))),
+                                                                      fluidRow(column(3,uiOutput("sel_comparam_site1")),
+                                                                               column(3,uiOutput("sel_comparam_site2")),
+                                                                               column(3, uiOutput("sel_comparam_site3"))),
                                                                       fluidRow(plotlyOutput("compare_sites"))),
                                                              tabPanel("Scatter Plots"),
                                                              tabPanel("Concentration Map")
