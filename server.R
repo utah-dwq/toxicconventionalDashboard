@@ -185,6 +185,7 @@ observe({
 observeEvent(input$clear_sitelist, ignoreInit=T,{
   reactive_objects$sel_sites = NULL
   reactive_objects$selsite_data = NULL
+  reactive_objects$selsite_data_nodups = NULL
   selsite_data = site_params_nodups[0,]
   output$selsite_data <- DT::renderDT({
     DT::datatable(
@@ -209,7 +210,7 @@ observeEvent(input$build_dat,{
   reactive_objects$selsite_data = selsite_data
   reactive_objects$selsite_data_nodups = selsite_data_nodups
   
-  # Table does not show duplicates to cur down on confusion
+  # Table does not show duplicates to cut down on confusion
     output$selsite_data <- DT::renderDT({
       DT::datatable(
         selsite_data_nodups, rownames=FALSE,filter="top",
@@ -217,19 +218,6 @@ observeEvent(input$build_dat,{
       )
     })
     outputOptions(output, "selsite_data", suspendWhenHidden = FALSE)
-})
-
-# Clear data
-observeEvent(input$clear_dat,{
-  reactive_objects$selsite_data = NULL
-  selsite_data_nodups = site_params_nodups[0,]
-  output$selsite_data <- DT::renderDT({
-    DT::datatable(
-      selsite_data_nodups, rownames=FALSE,filter="top",
-      options = list(scrollY = '400px', paging = FALSE, scrollX=TRUE, dom="ltipr")
-    )
-  })
-  outputOptions(output, "selsite_data", suspendWhenHidden = FALSE)
 })
 
 #### COMPARE PARAMS ####
@@ -299,22 +287,6 @@ observe({
   
 })
 
-# Parameter 3 selection based on parameter 2
-# observe({
-#   if(!is.null(input$sel_param2)){
-#     params = reactive_objects$sel.param2
-#     params1 = params[!(params==input$sel_param2)]
-#     if(length(params1)>0){
-#       reactive_objects$sel.param3 = params1
-#     }else{
-#       reactive_objects$sel.param3=NULL}
-#   }
-#   output$sel_param3 <- renderUI({
-#     selectInput("sel_param3", "Select Parameter 3", choices = c("",reactive_objects$sel.param3), selected = "")
-#   })
-#   
-# })
-
 # Filter data to inputs for plotting
 observe({
   if(!is.null(input$sel_use1)&!is.null(input$sel_param1)){
@@ -346,17 +318,18 @@ observe({
     
     param1 = plotdata[plotdata$R3172ParameterName==input$sel_param1,]
     param2 = plotdata[plotdata$R3172ParameterName==input$sel_param2,]
-    #param3 = plotdata[plotdata$R3172ParameterName==input$sel_param3,]
     
     p = plot_ly(type = 'scatter', mode = 'lines+markers')%>% 
       layout(title = param1$IR_MLID[1],
+             titlefont = list(
+               family = "Arial, sans-serif"),
+             font = list(
+               family = "Arial, sans-serif"),
              yaxis1 = list(title = param1$IR_Unit[1]),
              yaxis2 = list(side="right", overlaying = "y",title = param2$IR_Unit[1]))%>%
-            # yaxis3 = list(side = "right", overlaying = "y", title = param3$IR_Unit[1]))%>%
       add_trace(x = param1$ActivityStartDate, y = param1$IR_Value, name = param1$R3172ParameterName[1], marker = list(size = 10))%>%
       add_trace(x = param2$ActivityStartDate, y = param2$IR_Value, name = param2$R3172ParameterName[1], marker = list(size = 10), yaxis = "y2")
-     #%>% add_trace(x = param3$ActivityStartDate, y = param3$IR_Value, name = param3$R3172ParameterName[1], mode='lines+markers', yaxis = "y3")
-  })
+ })
 
 #### COMPARE SITES ####
 
@@ -427,24 +400,22 @@ output$compare_sites <- renderPlotly({
   title = as.character(plotdata$R3172ParameterName[1])
   
   if(input$compare_plottype=="Time Series"){
-    # p = plot_ly(type = 'scatter')%>% 
-    #   layout(title = site1$R3172ParameterName[1],
-    #          yaxis1 = list(title = site1$IR_Unit[1]))%>%
-    #   add_trace(x = site1$ActivityStartDate, y = site1$IR_Value, name = site1$IR_MLID[1], mode='lines+markers')%>%
-    #   add_trace(x = site2$ActivityStartDate, y = site2$IR_Value, name = site2$IR_MLID[1], mode='lines+markers')%>%
-    #   add_trace(x = site3$ActivityStartDate, y = site3$IR_Value, name = site3$IR_MLID[1], mode='lines+markers')
     p = plot_ly(type = 'scatter', mode = 'lines+markers',x = plotdata$ActivityStartDate, y = plotdata$IR_Value, color = plotdata$IR_MLID, transforms = list(type = 'groupby', groups = plotdata$IR_MLID),
                 marker = list(size=10))%>% 
         layout(title = title,
+               titlefont = list(
+                 family = "Arial, sans-serif"),
+               font = list(
+                 family = "Arial, sans-serif"),
                xaxis = list(title = "Site"),
                yaxis = list(title = unit))
   }else{
-    # p = plot_ly(y= site1$IR_Value, name = site1$IR_MLID[1], type = "box")%>%
-    #   add_trace(y = site2$IR_Value, name = site2$IR_MLID[1])%>%
-    #   add_trace(y = site3$IR_Value, name = site3$IR_MLID[1])%>%
-    #   layout(yaxis = list(title = axis1_unit), xaxis = list(title = "Sites"))
     p = plot_ly(type = 'box', y = plotdata$IR_Value, color = plotdata$IR_MLID, transforms = list(type = 'groupby', groups = plotdata$IR_MLID))%>%
       layout(title = title,
+             titlefont = list(
+               family = "Arial, sans-serif"),
+             font = list(
+               family = "Arial, sans-serif"),
              xaxis = list(title = "Site"),
              yaxis = list(title = unit))
   }
@@ -458,23 +429,26 @@ output$sel_maparameter <- renderUI({
     selectInput("sel_maparameter","Select Parameter", choices = c("",reactive_objects$comparameters), selected = "")
   })
 
+output$sel_paramdate <- renderUI({
+  sliderInput("sel_paramdate", "Select Date Range", min = min(reactive_objects$selsite_data_nodups$ActivityStartDate), max = max(reactive_objects$selsite_data_nodups$ActivityStartDate), value = c(min(reactive_objects$selsite_data_nodups$ActivityStartDate),max(reactive_objects$selsite_data_nodups$ActivityStartDate)))
+})
+
 # Map proxy
 conc_proxy = leaflet::leafletProxy("conc_map")
 # map
 session$onFlushed(once = T, function() {
   output$conc_map <- leaflet::renderLeaflet({
+    req(reactive_objects$selsite_data_nodups)
     
-    # Isolate data and map coordinates
+    # Set map bounds
     data = reactive_objects$selsite_data_nodups
-    sites = data[,c("IR_MLID","IR_Lat","IR_Long")]
+    sites = unique(data[,c("IR_MLID","IR_Lat","IR_Long")])
     minlat = min(sites$IR_Lat)
     maxlat = max(sites$IR_Lat)
     minlong = min(sites$IR_Long)
     maxlong = max(sites$IR_Long)
     
-    conc_sites = data[data$R3172ParameterName==input$sel_maparameter,]
-    conc_radius = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, mean)
-    
+    # Map parameters
     conc_map = wqTools::buildMap(plot_polys=TRUE, search="")
     conc_map = leaflet::addLayersControl(conc_map,
                                     position ="topleft",
@@ -482,34 +456,48 @@ session$onFlushed(once = T, function() {
                                     options = leaflet::layersControlOptions(collapsed = TRUE, autoZIndex=TRUE))
     conc_map = fitBounds(conc_map, minlong, minlat, maxlong, maxlat)
     conc_map=addMapPane(conc_map,"site_markers", zIndex = 450)
+    conc_map=hideGroup(conc_map, "Assessment units")
+    conc_map=hideGroup(conc_map, "Site-specific standards")
+    conc_map=hideGroup(conc_map, "Beneficial uses") 
+    conc_map=removeMeasure(conc_map)
+    
     conc_map = addCircleMarkers(conc_map, data = sites, lat=sites$IR_Lat, lng=sites$IR_Long, layerId = sites$IR_MLID,group="Sites",
-                           weight = 2, fill = TRUE, opacity=0.95, fillOpacity = 0.5, fillColor =~pal1(reactive_objects$selsite_data_nodups$MaxCat),radius = as.numeric(reactive_objects$site_coords$radius), color =~pal1(reactive_objects$site_coords$MaxCat), options = pathOptions(pane = "site_markers"),
-                           popup = paste0(
-                             "MLID: ", reactive_objects$site_coords$IR_MLID,
-                             "<br> ML Name: ", reactive_objects$site_coords$IR_MLNAME,
-                             "<br> Site Type: ", reactive_objects$site_coords$AU_Type,
-                             "<br> Categories: ", reactive_objects$site_coords$Categories,
-                             "<br> Impaired Params: ", reactive_objects$site_coords$Impaired_Params,
-                             "<br> Parameter Count: ", reactive_objects$site_coords$NParam,
-                             "<br> Sample Count: ", as.character(reactive_objects$site_coords$NCount)))
-    map=hideGroup(conc_map, "Assessment units")
-    map=hideGroup(conc_map, "Site-specific standards")
-    map=hideGroup(conc_map, "Beneficial uses") 
-    map=removeMeasure(conc_map)
-    map=leaflet::addLegend(conc_map, position = 'topright',
-                           colors = unique(pal1(reactive_objects$site_coords$MaxCat)), 
-                           labels = c("idE","FS","idNE","NS"))
-    #map=selectFeatures(reactive_objects$site_coords, mode = "click")
+                                  weight = 2, fill = TRUE, opacity=0.95, fillOpacity = 0.5, color = "green", radius = 2, options = pathOptions(pane = "site_markers"))
+
   })
 })
 
+# observe inputs to change map proxy
+observe({
+  req(input$sel_maparameter)
+  # Isolate data and map coordinates
+  if(!is.null(reactive_objects$selsite_data_nodups)){
+    data = reactive_objects$selsite_data_nodups
+    sites = unique(data[,c("IR_MLID","IR_Lat","IR_Long")])
+    conc_sites = data[data$R3172ParameterName==input$sel_maparameter&data$ActivityStartDate>=input$sel_paramdate[1]&data$ActivityStartDate<=input$sel_paramdate[2],]
+    avg_site_val = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, mean)
+    conc_radius = ((avg_site_val-mean(avg_site_val))/sd(avg_site_val)+3)*3
+    conc_ncount = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, length)
+    conc_radii = data.frame(IR_MLID = names(conc_radius), Avg_IR_Value = avg_site_val, Radius = conc_radius, Ncount = conc_ncount)
+    site_data = merge(sites, conc_radii)
+    
+    conc_proxy%>%clearMarkers()%>%addCircleMarkers(data = site_data, lat=site_data$IR_Lat, lng=site_data$IR_Long, layerId = site_data$IR_MLID,group="Sites",
+                                  weight = 2, fill = TRUE, opacity=0.95, fillOpacity = 0.5, radius = as.numeric(site_data$Radius), options = pathOptions(pane = "site_markers"),
+                                  popup = paste0(
+                                    "MLID: ", site_data$IR_MLID,
+                                    "<br> Average Parameter Value: ", site_data$Avg_IR_Value,
+                                    "<br> Sample Count: ", as.character(site_data$Ncount)))
+  }
+ 
+})
+
 
 
 
 })
 
 
-
+##################### OLD CODE ############################
 
 
 # Define date range for slider input - changes based on whether a partially filtered data object is present in the reactivity object
@@ -617,3 +605,19 @@ session$onFlushed(once = T, function() {
 #   side = "right",
 #   title = param2$IR_Unit[1]
 # )
+
+# Parameter 3 selection based on parameter 2
+# observe({
+#   if(!is.null(input$sel_param2)){
+#     params = reactive_objects$sel.param2
+#     params1 = params[!(params==input$sel_param2)]
+#     if(length(params1)>0){
+#       reactive_objects$sel.param3 = params1
+#     }else{
+#       reactive_objects$sel.param3=NULL}
+#   }
+#   output$sel_param3 <- renderUI({
+#     selectInput("sel_param3", "Select Parameter 3", choices = c("",reactive_objects$sel.param3), selected = "")
+#   })
+#   
+# })

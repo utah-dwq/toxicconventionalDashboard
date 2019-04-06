@@ -64,8 +64,7 @@ shinyUI(fluidPage(
                                            bsCollapsePanel("Data",
                                                            strong("Review the prepped data below. Select any questionable records and click 'Make Comment' to flag data records for review."),
                                                            br(),
-                                                           fluidRow(column(3,actionButton("dt_comment", "Make Comment", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
-                                                                    column(3,actionButton("clear_dat", "Clear Data Table", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
+                                                           fluidRow(column(3,actionButton("dt_comment", "Make Comment", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),
                                                            br(),
                                                            fluidRow(div(DT::DTOutput("selsite_data"), style = "font-size:70%"))
                                            ),
@@ -85,13 +84,16 @@ shinyUI(fluidPage(
                                                                       fluidRow(plotlyOutput("compare_params"))),
                                                              #tabPanel("Scatter Plots"),
                                                              tabPanel("Concentration Map",
-                                                                      fluidRow(column(6,uiOutput("sel_maparameter")),
-                                                                               column(6, uiOutput("sel_paramdate"))))
-                                                           )))
+                                                                      br(),
+                                                                      fluidRow(column(6,fluidRow(uiOutput("sel_maparameter")),
+                                                                                      fluidRow(uiOutput("sel_paramdate"))),
+                                                                               column(6, shinycssloaders::withSpinner(leaflet::leafletOutput("conc_map", height="500px"),size=2, color="#0080b7")))
+                                                                      )
+                                                                    )))
                                 ))
   )
-  ))
-
+  )
+)
 
 # bsCollapsePanel("Filter Data",
 #                 h4("Further drill down data specifics in this tab before exploring plots, below"),
