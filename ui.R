@@ -38,7 +38,7 @@ shinyUI(fluidPage(
       h4("Expand and collapse panels by clicking the panel title."),
       bsCollapse(id = "collpanels", multiple = TRUE,
                 bsCollapsePanel("Select Sites",
-                                h4("Use the Map and Data panels to add sites to the Selected Site(s) panel."),
+                                h4("Use the Map and Data panels to add sites to the Selected Site(s) panel. Once you have selected your sites of interest, click the 'Selected Sites' panel to populate data tables and plots below."),
                                 br(),
                                 bsCollapse(id = "seldatpanels", multiple=TRUE,
                                 bsCollapsePanel("Map",
@@ -51,7 +51,7 @@ shinyUI(fluidPage(
                                                          div(DT::DTOutput("site_list"), style = "font-size:70%"))
                                 ),
                                 bsCollapsePanel("Selected Site(s)",
-                                                fluidRow(strong("Selected site(s) from map and table will appear here. Click 'Clear Site List' to clear selected sites.")),
+                                                fluidRow(strong("Selected site(s) from map and table will appear here. 'Build Data Table' will populate the 'View Data' panel below. Click 'Clear Site List' to clear selected sites.")),
                                                 br(),
                                                 fluidRow(column(3,actionButton("build_dat", "Build Data Table", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%')),
                                                          column(3, actionButton("clear_sitelist","Clear Site List", style='color: #fff; background-color: #337ab7; border-color: #2e6da4;font-size:120%'))),

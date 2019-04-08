@@ -475,7 +475,7 @@ observe({
     data = reactive_objects$selsite_data_nodups
     sites = unique(data[,c("IR_MLID","IR_Lat","IR_Long")])
     conc_sites = data[data$R3172ParameterName==input$sel_maparameter&data$ActivityStartDate>=input$sel_paramdate[1]&data$ActivityStartDate<=input$sel_paramdate[2],]
-    avg_site_val = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, mean)
+    avg_site_val = round(tapply(conc_sites$IR_Value, conc_sites$IR_MLID, mean),2)
     conc_radius = ((avg_site_val-mean(avg_site_val))/sd(avg_site_val)+3)*3
     conc_ncount = tapply(conc_sites$IR_Value, conc_sites$IR_MLID, length)
     conc_radii = data.frame(IR_MLID = names(conc_radius), Avg_IR_Value = avg_site_val, Radius = conc_radius, Ncount = conc_ncount)
